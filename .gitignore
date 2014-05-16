@@ -1,0 +1,4 @@
+*.pyc
+
+dynamo_local
+.env
