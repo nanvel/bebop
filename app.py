@@ -26,16 +26,28 @@ def init_db():
     1. Create connection
     2. Create table (if not exists) and load inital data
     """
-    from boto.exception import JSONResponseError
     from boto.dynamodb2.table import Table
-    DynamoDBConnection(
+    conn = DynamoDBConnection(
         host='localhost', port=8010,
         aws_secret_access_key='anything',
         is_secure=False)
-    try:
-        Table('bebop-tv').describe()
-    except JSONResponseError:
+
+    TABLE_NAME = 'bebop-tv'
+
+    if TABLE_NAME not in conn.list_tables()['TableNames']:
         logger.info('Creating bebop-tv table ...')
+        from boto.dynamodb2.fields import HashKey, KeysOnlyIndex
+        from boto.dynamodb2.table import Table
+        from boto.dynamodb2.types import NUMBER
+        from initial_data import TVS
+        table = Table.create(TABLE_NAME, schema=[
+            HashKey('number', data_type=NUMBER),
+        ], throughput={
+            'read': 5,
+            'write': 15,
+        }, connection=conn)
+        for episode in TVS:
+            table.put_item(data=episode)
 
 
 if __name__ == '__main__':

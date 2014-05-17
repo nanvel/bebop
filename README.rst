@@ -6,6 +6,8 @@ Technology stack
 
     - `Tornado <http://www.tornadoweb.org/en/stable/>`__
     - `AWS DynamoDB <http://aws.amazon.com/documentation/dynamodb/>`__
+    - `AngularJS <https://angularjs.org/>`__
+    - `HTML5 WebSocket <http://en.wikipedia.org/wiki/WebSocket>`__
 
 Development
 -----------
