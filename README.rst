@@ -34,3 +34,5 @@ Resources used
     - `animenewsnetwork.com <http://www.animenewsnetwork.com/encyclopedia/anime.php?id=13>`__
     - `List of Cowboy Bebop episodes <http://en.wikipedia.org/wiki/List_of_Cowboy_Bebop_episodes>`__
     - `An Introduction to boto’s DynamoDB v2 interface <http://boto.readthedocs.org/en/latest/dynamodb2_tut.html>`__
+    - `
+Marrying Boto to Tornado: Greenlets bring them together <http://blog.joshhaas.com/2011/06/marrying-boto-to-tornado-greenlets-bring-them-together/>`__

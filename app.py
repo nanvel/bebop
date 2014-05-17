@@ -6,6 +6,7 @@ import tornado.web
 
 from boto.dynamodb2.layer1 import DynamoDBConnection
 
+from bebop.models import EpisodeModel
 from bebop.utils import rel
 from bebop.handlers import IndexHandler
 
@@ -26,7 +27,6 @@ def init_db():
     1. Create connection
     2. Create table (if not exists) and load inital data
     """
-    from boto.dynamodb2.table import Table
     conn = DynamoDBConnection(
         host='localhost', port=8010,
         aws_secret_access_key='anything',
