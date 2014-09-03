@@ -36,3 +36,4 @@ Resources used
     - `An Introduction to boto’s DynamoDB v2 interface <http://boto.readthedocs.org/en/latest/dynamodb2_tut.html>`__
     - `
 Marrying Boto to Tornado: Greenlets bring them together <http://blog.joshhaas.com/2011/06/marrying-boto-to-tornado-greenlets-bring-them-together/>`__
+    - `Greenlet-Tornado <https://github.com/mopub/greenlet-tornado>`__
