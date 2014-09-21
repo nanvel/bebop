@@ -1,2 +1,3 @@
 tornado
-boto
+botocore
+tornado-botocore

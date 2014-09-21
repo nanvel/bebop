@@ -1,58 +1,32 @@
-import sys
-import logging
-
-import tornado.options
-import tornado.web
-
-from boto.dynamodb2.layer1 import DynamoDBConnection
-
-from bebop.models import EpisodeModel
-from bebop.utils import rel
-from bebop.handlers import IndexHandler
+from bebop.common.utils import rel
+from bebop.editor.handlers import IndexHandler, EpisodesHandler, EpisodeHandler
+from bebop.editor.models import Episode
+from os import environ
+from tornado import web, options, ioloop
 
 
-logger = logging.getLogger(__name__)
+ENV = environ.get('BEBOP_ENV', 'dev')
 
 
-SETTINGS = {
-    'handlers': [(r'/', IndexHandler),],
-    'template_path': rel('templates'),
-    'static_path': rel('static'),
-    'debug': True,
-}
+class BebopApplication(web.Application):
 
-
-def init_db():
-    """
-    1. Create connection
-    2. Create table (if not exists) and load inital data
-    """
-    conn = DynamoDBConnection(
-        host='localhost', port=8010,
-        aws_secret_access_key='anything',
-        is_secure=False)
-
-    TABLE_NAME = 'bebop-tv'
-
-    if TABLE_NAME not in conn.list_tables()['TableNames']:
-        logger.info('Creating bebop-tv table ...')
-        from boto.dynamodb2.fields import HashKey, KeysOnlyIndex
-        from boto.dynamodb2.table import Table
-        from boto.dynamodb2.types import NUMBER
-        from initial_data import TVS
-        table = Table.create(TABLE_NAME, schema=[
-            HashKey('number', data_type=NUMBER),
-        ], throughput={
-            'read': 5,
-            'write': 15,
-        }, connection=conn)
-        for episode in TVS:
-            table.put_item(data=episode)
+    def __init__(self, **kwargs):
+        Episode().create_table_if_not_exists()
+        kwargs['handlers'] = [
+            web.url(r'/', IndexHandler, name='index'),
+            web.url(r'/episodes', EpisodesHandler, name='episodes'),
+            web.url(r'/episode/(?P<number>\d{1,3})', EpisodeHandler, name='episode'),
+        ]
+        kwargs['debug'] = True
+        kwargs['template_path'] = rel('templates')
+        kwargs['static_path'] = rel('static')
+        super(BebopApplication, self).__init__(**kwargs)
 
 
 if __name__ == '__main__':
-    tornado.options.parse_command_line()
-    init_db()
-    application = tornado.web.Application(**SETTINGS)
-    application.listen(8000)
-    tornado.ioloop.IOLoop.instance().start()
+    options.parse_command_line()
+    # see bebop/common/__init__.py
+    options.parse_config_file(rel('config/{env}.cfg'.format(env=ENV)))
+    application = BebopApplication()
+    application.listen(options.options.port)
+    ioloop.IOLoop.instance().start()
