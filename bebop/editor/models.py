@@ -1,6 +1,8 @@
 import logging
 
 from tornado import gen
+from tornado.options import options
+from tornado.httpclient import HTTPError
 from tornado_botocore import Botocore
 
 
@@ -9,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class Episode(object):
 
-    TABLE_NAME = 'bebop1'
+    TABLE_NAME = 'bebop'
     REGION = 'us-east-1'
 
     # The data type for the attribute. You can specify S for string data,
@@ -69,7 +71,12 @@ class Episode(object):
         session = getattr(self, '_session', None)
         ddb = Botocore(
             service='dynamodb', operation=operation,
-            region_name=self.REGION, session=session)
+            region_name=self.REGION, session=session,
+            endpoint_url=options.amazon_ddb_host)
+        if options.amazon_access_key and options.amazon_secret_key:
+            ddb.session.set_credentials(
+                options.amazon_access_key,
+                options.amazon_secret_key)
         self._session = ddb.session
         return ddb
 
@@ -88,17 +95,16 @@ class Episode(object):
         return kwargs
 
     def create_table_if_not_exists(self):
-        import botocore.session
-        session = botocore.session.get_session()
-        ddb = session.get_service('dynamodb')
-        operation = ddb.get_operation('DescribeTable')
-        endpoint = ddb.get_endpoint(self.REGION)
-        res = operation.call(endpoint, table_name=self.TABLE_NAME)
-        if res[1].get('Errors', [{}])[0].get('Code', '') == 'ResourceNotFoundException':
+        ddb_describe_table = self.dynamodb(operation='DescribeTable')
+        try:
+            res = ddb_describe_table.call(table_name=self.TABLE_NAME)
+        except HTTPError:
+            # table does not exist
             logger.info('Creting {table_name} table ...'.format(table_name=self.TABLE_NAME))
-            operation = ddb.get_operation('CreateTable')
-            res = operation.call(endpoint, **self.table_kwargs)
-            if res[0].status_code != 200:
+            ddb_create_table = self.dynamodb(operation='CreateTable')
+            try:
+                res = ddb_create_table.call(**self.table_kwargs)
+            except HTTPError:
                 msg = '{table_name} table creation failed.'.format(table_name=self.TABLE_NAME)
                 logger.error(msg)
                 raise Exception(msg)

@@ -3,20 +3,19 @@ import json
 from tornado.web import RequestHandler
 from tornado import gen
 
-from .initial_data import TVS
 from .models import Episode
 
 
 class IndexHandler(RequestHandler):
 
     def get(self):
-        self.render('index.html')
+        self.write('It works.')
 
 
 class EpisodesHandler(RequestHandler):
 
     def get(self):
-        self.write(json.dumps({'series': TVS}))
+        self.write(json.dumps({'series': 1}))
 
 
 class EpisodeHandler(RequestHandler):
