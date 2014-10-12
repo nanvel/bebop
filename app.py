@@ -21,8 +21,6 @@ class BebopApplication(web.Application):
             web.url(r'/search', SearchHandler, name='search'),
         ]
         kwargs['debug'] = True
-        kwargs['template_path'] = rel('templates')
-        kwargs['static_path'] = rel('static')
         super(BebopApplication, self).__init__(**kwargs)
 
 
