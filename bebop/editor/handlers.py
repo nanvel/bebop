@@ -3,7 +3,7 @@ import json
 from tornado.web import RequestHandler
 from tornado import gen
 
-from .models import Episode
+from .models import DDBEpisode
 
 
 class IndexHandler(RequestHandler):
@@ -14,21 +14,46 @@ class IndexHandler(RequestHandler):
 
 class EpisodesHandler(RequestHandler):
 
+    @gen.coroutine
     def get(self):
-        self.write(json.dumps({'series': 1}))
+        limit = self.get_argument('limit', 10)
+        last = self.get_argument('last', None)
+        episode = DDBEpisode()
+        e = yield episode.items(limit=limit, last=last)
+        self.write(json.dumps(e))
 
 
 class EpisodeHandler(RequestHandler):
 
     @gen.coroutine
     def get(self, number):
-        episode = Episode()
+        episode = DDBEpisode()
         e = yield episode.get(number=number)
-        self.write(str(e))
+        self.write(json.dumps(e))
 
+    @gen.coroutine
     def put(self, number):
         # returns 201 if created or 200 if modified
-        self.write('create episode')
+        data = json.loads(self.request.body)
+        data['number'] = number
+        episode = DDBEpisode()
+        e = yield episode.create(**data)
+        self.write(json.dumps(e))
 
+    @gen.coroutine
     def delete(self, number):
-        self.write('delete episode')
+        episode = DDBEpisode()
+        e = yield episode.delete(number=number)
+        self.write(json.dumps(e))
+
+
+class SearchHandler(RequestHandler):
+
+    @gen.coroutine
+    def get(self):
+        limit = self.get_argument('limit', 10)
+        last = self.get_argument('last', None)
+        q = self.get_argument('q')
+        episode = DDBEpisode()
+        e = yield episode.search(limit=limit, last=last, q=q)
+        self.write(json.dumps(e))

@@ -1,6 +1,8 @@
 from bebop.common.utils import rel
-from bebop.editor.handlers import IndexHandler, EpisodesHandler, EpisodeHandler
-from bebop.editor.models import Episode
+from bebop.editor.handlers import (
+    IndexHandler, EpisodesHandler, EpisodeHandler,
+    SearchHandler)
+from bebop.editor.models import DDBEpisode
 from os import environ
 from tornado import web, options, ioloop
 
@@ -11,11 +13,12 @@ ENV = environ.get('BEBOP_ENV', 'dev')
 class BebopApplication(web.Application):
 
     def __init__(self, **kwargs):
-        Episode().create_table_if_not_exists()
+        DDBEpisode().create_table_if_not_exists()
         kwargs['handlers'] = [
             web.url(r'/', IndexHandler, name='index'),
             web.url(r'/episodes', EpisodesHandler, name='episodes'),
             web.url(r'/episode/(?P<number>\d{1,3})', EpisodeHandler, name='episode'),
+            web.url(r'/search', SearchHandler, name='search'),
         ]
         kwargs['debug'] = True
         kwargs['template_path'] = rel('templates')

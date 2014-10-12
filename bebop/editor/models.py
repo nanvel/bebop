@@ -1,18 +1,16 @@
 import logging
 
 from tornado import gen
-from tornado.options import options
-from tornado.httpclient import HTTPError
-from tornado_botocore import Botocore
+
+from ..common.dynamo import DDBBase
 
 
 logger = logging.getLogger(__name__)
 
 
-class Episode(object):
+class DDBEpisode(DDBBase):
 
     TABLE_NAME = 'bebop'
-    REGION = 'us-east-1'
 
     # The data type for the attribute. You can specify S for string data,
     # N for numeric data, or B for binary data.
@@ -22,39 +20,33 @@ class Episode(object):
     }, {
         'AttributeName': 'title',
         'AttributeType': 'S'
-    }, {
-        'AttributeName': 'airdate',
-        'AttributeType': 'N'
     }]
 
     # http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html#DataModelPrimaryKey
     KEY_SCHEMA = [{
         'AttributeName': 'number',
         'KeyType': 'HASH'
-    }, {
-        'AttributeName': 'airdate',
-        'KeyType': 'RANGE'
     }]
 
     # http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html
 
-    LOCAL_SECONDARY_INDEXES = [{
+    LOCAL_SECONDARY_INDEXES = []
+
+    GLOBAL_SECONDARY_INDEXES = [{
         'IndexName': 'by_title',
         'KeySchema': [
             {
-                'AttributeName': 'number',
-                'KeyType': 'HASH'
-            }, {
                 'AttributeName': 'title',
-                'KeyType': 'RANGE'
+                'KeyType': 'HASH'
             }
         ],
         # http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html#LSI.Projections
         'Projection': {
-            'NonKeyAttributes': [
-                'description'
-            ],
-            'ProjectionType': 'INCLUDE'
+            'ProjectionType': 'ALL',
+        },
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
         }
     }]
 
@@ -64,77 +56,66 @@ class Episode(object):
         'WriteCapacityUnits': 2
     }
 
-    def __init__(self):
-        pass
-
-    def dynamodb(self, operation):
-        session = getattr(self, '_session', None)
-        ddb = Botocore(
-            service='dynamodb', operation=operation,
-            region_name=self.REGION, session=session,
-            endpoint_url=options.amazon_ddb_host)
-        if options.amazon_access_key and options.amazon_secret_key:
-            ddb.session.set_credentials(
-                options.amazon_access_key,
-                options.amazon_secret_key)
-        self._session = ddb.session
-        return ddb
-
-    @property
-    def table_kwargs(self):
-        kwargs = {
-            'table_name': self.TABLE_NAME,
-            'attribute_definitions': self.ATTRIBUTE_DEFINITIONS,
-            'key_schema': self.KEY_SCHEMA,
-            'provisioned_throughput': self.PROVISIONED_THROUGHPUT,
-        }
-        if hasattr(self, 'LOCAL_SECONDARY_INDEXES'):
-            kwargs['local_secondary_indexes'] = self.LOCAL_SECONDARY_INDEXES
-        if hasattr(self, 'GLOBAL_SECONDARY_INDEXES'):
-            kwargs['global_secondary_indexes'] = self.GLOBAL_SECONDARY_INDEXES
-        return kwargs
-
-    def create_table_if_not_exists(self):
-        ddb_describe_table = self.dynamodb(operation='DescribeTable')
-        try:
-            res = ddb_describe_table.call(table_name=self.TABLE_NAME)
-        except HTTPError:
-            # table does not exist
-            logger.info('Creting {table_name} table ...'.format(table_name=self.TABLE_NAME))
-            ddb_create_table = self.dynamodb(operation='CreateTable')
-            try:
-                res = ddb_create_table.call(**self.table_kwargs)
-            except HTTPError:
-                msg = '{table_name} table creation failed.'.format(table_name=self.TABLE_NAME)
-                logger.error(msg)
-                raise Exception(msg)
-
-    def count(self):
-        """Returns series count.
-        """
-        pass
+    ATTRIBUTES = {
+        'number': 'N',
+        'title': 'S',
+        'airdate': 'N', # timestamp
+        'content': 'S',
+    }
 
     @gen.coroutine
     def get(self, number):
+        # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html
         ddb_get_item = self.dynamodb(operation='GetItem')
-        # TODO: use global secondary index
         res = yield gen.Task(ddb_get_item.call,
             table_name=self.TABLE_NAME,
-            key={'number': {'N': str(number)}, 'airadate': {'N': '123'}})
+            key=self.with_types({'number': number}))
         raise gen.Return(res)
 
-    def by_number(self, offset=0, limit=10):
-        """Returns series sorted by number.
-        """
-        pass
+    @gen.coroutine
+    def create(self, **kwargs):
+        item = {}
+        ddb_put_item = self.dynamodb(operation='PutItem')
+        res = yield gen.Task(ddb_put_item.call,
+            table_name=self.TABLE_NAME,
+            item=self.with_types(kwargs))
+        raise gen.Return(res)
 
-    def by_title(self, offset=0, limit=10):
-        """Returns series sorted by title.
-        """
-        pass
+    @gen.coroutine
+    def delete(self, number):
+        ddb_delete_item = self.dynamodb(operation='DeleteItem')
+        res = yield gen.Task(ddb_delete_item.call,
+            table_name=self.TABLE_NAME,
+            key=self.with_types({'number': number}))
+        raise gen.Return(res)
 
-    def update(self, number, **kwargs):
-        pass
+    @gen.coroutine
+    def items(self, limit=10, last=None):
+        ddb_scan = self.dynamodb(operation='Scan')
+        kwargs = {
+            'table_name': self.TABLE_NAME,
+            'limit': int(limit),
+        }
+        if last:
+            kwargs['exclusive_start_key'] = self.with_types({'number': last})
+        res = yield gen.Task(ddb_scan.call, **kwargs)
+        raise gen.Return(res)
 
-    def create(self, number, **kwargs):
-        pass
+    @gen.coroutine
+    def search(self, q, limit=10, last=None):
+        ddb_query = self.dynamodb(operation='Query')
+        kwargs = {
+            'table_name': self.TABLE_NAME,
+            'limit': int(limit),
+            'index_name': 'by_title',
+            'key_conditions': {
+                'title': {
+                    'AttributeValueList': [{'S': q}],
+                    'ComparisonOperator': 'EQ'
+                }
+            }
+        }
+        if last:
+            kwargs['exclusive_start_key'] = self.with_types({'number': last})
+        res = yield gen.Task(ddb_query.call, **kwargs)
+        raise gen.Return(res)
