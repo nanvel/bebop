@@ -3,7 +3,9 @@ Cowboy Bebop tv wiki
 
 The application allows to add/edit/remove Cowboy Bebop tv serios information. It uses Amazon DynamoDB storage and works with it asynchronously.
 
-Also see my DynamoDB tutorial at `nanvel.com <http://nanvel.com>`__.
+**UPD 2015-06-25**
+
+ATTN: The example contains bad practices. See my my `DynamoDB in examples <http://nanvel.com/p/dynamodb>`__ tutorial instead.
 
 Usage
 -----
