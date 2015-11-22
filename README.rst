@@ -5,7 +5,7 @@ The application allows to add/edit/remove Cowboy Bebop tv serios information. It
 
 **UPD 2015-06-25**
 
-ATTN: The example contains bad practices. See my `DynamoDB in examples <http://nanvel.com/p/dynamodb>`__ tutorial instead.
+ATTN: The example contains bad practices. See my `DynamoDB in examples <http://nanvel.name/label/dynamodb>`__ tutorial instead.
 
 Usage
 -----
