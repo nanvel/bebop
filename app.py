@@ -1,10 +1,10 @@
-from bebop.common.utils import rel
-from bebop.editor.handlers import (
-    IndexHandler, EpisodesHandler, EpisodeHandler,
-    SearchHandler)
-from bebop.editor.models import DDBEpisode
 from os import environ
+
 from tornado import web, options, ioloop
+
+from bebop.common.utils import rel
+from bebop.editor.handlers import IndexHandler, EpisodesHandler, EpisodeHandler, SearchHandler
+from bebop.editor.models import DDBEpisode
 
 
 ENV = environ.get('BEBOP_ENV', 'dev')
